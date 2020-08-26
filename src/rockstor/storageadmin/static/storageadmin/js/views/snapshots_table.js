@@ -26,13 +26,13 @@
 
 SnapshotsTableModule = SnapshotsCommonView.extend({
     events: {
-        "click #js-snapshot-add": "add",
-        "click #js-snapshot-cancel": "cancel",
-        "click .js-snapshot-delete": "deleteSnapshot",
-        "click .js-snapshot-clone": "cloneSnapshot",
-        "click .js-snapshot-select": "selectSnapshot",
-        "click .js-snapshot-select-all": "selectAllSnapshots",
-        "click #js-snapshot-delete-multiple": "deleteMultipleSnapshots"
+        'click #js-snapshot-add': 'add',
+        'click #js-snapshot-cancel': 'cancel',
+        'click .js-snapshot-delete': 'deleteSnapshot',
+        'click .js-snapshot-clone': 'cloneSnapshot',
+        'click .js-snapshot-select': 'selectSnapshot',
+        'click .js-snapshot-select-all': 'selectAllSnapshots',
+        'click #js-snapshot-delete-multiple': 'deleteMultipleSnapshots'
     },
 
     initialize: function() {
@@ -42,7 +42,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
         this.share = this.options.share;
         this.snapshots = this.options.snapshots;
         this.collection = this.options.snapshots;
-        this.collection.on("reset", this.render, this);
+        this.collection.on('reset', this.render, this);
         this.selectedSnapshots = [];
         this.parentView = this.options.parentView;
         this.initHandlebarHelpers();
@@ -56,7 +56,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
             collection: this.collection,
             collectionNotEmpty: !this.collection.isEmpty(),
             selectedSnapshots: this.selectedSnapshots,
-            share: this.share,
+            share: this.share
         }));
         this.$('[rel=tooltip]').tooltip({
             placement: 'bottom'
@@ -87,7 +87,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
         var err_msg = '';
         var name_err_msg = function() {
             return err_msg;
-        }
+        };
 
         $.validator.addMethod('validateSnapshotName', function(value) {
             var snapshot_name = $('#snapshot-name').val();
@@ -110,9 +110,9 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
                 if (buttonDisabled(button)) return false;
                 disableButton(button);
                 $.ajax({
-                    url: "/api/shares/" + _this.share.get('name') + "/snapshots/" + _this.$('#snapshot-name').val(),
-                    type: "POST",
-                    dataType: "json",
+                    url: '/api/shares/' + _this.share.get('id') + '/snapshots/' + _this.$('#snapshot-name').val(),
+                    type: 'POST',
+                    dataType: 'json',
                     contentType: 'application/json',
                     data: JSON.stringify(_this.$('#add-snapshot-form').getJSON()),
                     success: function() {
@@ -139,16 +139,16 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
         var _this = this;
         var name = $(event.currentTarget).attr('data-name');
         var esize = $(event.currentTarget).attr('data-size');
-        var share_name = this.share.get("name");
+        var share_id = this.share.get('id');
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
-        if (confirm("Deleting snapshot(" + name + ") deletes " + esize + " of data permanently. Do you really want to delete it?")) {
+        if (confirm('Deleting snapshot(' + name + ') deletes ' + esize + ' of data permanently. Do you really want to delete it?')) {
             disableButton(button);
             $.ajax({
-                url: "/api/shares/" + share_name + "/snapshots/" + name,
-                type: "DELETE",
+                url: '/api/shares/' + share_id + '/snapshots/' + name,
+                type: 'DELETE',
                 success: function() {
-                    enableButton(button)
+                    enableButton(button);
                     _this.$('[rel=tooltip]').tooltip('hide');
                     _this.selectedSnapshots = [];
                     _this.collection.fetch({
@@ -158,7 +158,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
                     });
                 },
                 error: function(xhr, status, error) {
-                    enableButton(button)
+                    enableButton(button);
                     _this.$('[rel=tooltip]').tooltip('hide');
                 }
             });
@@ -171,7 +171,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
         // even after new page has loaded.
         this.$('[rel=tooltip]').tooltip('hide');
         var name = $(event.currentTarget).attr('data-name');
-        var url = 'shares/' + this.share.get('name') + '/snapshots/' +
+        var url = 'shares/' + this.share.get('id') + '/snapshots/' +
             name + '/create-clone';
         app_router.navigate(url, {
             trigger: true
@@ -184,7 +184,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
         event.preventDefault();
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
-        var share_name = this.share.get("name");
+        var share_id = this.share.get('id');
         if (this.selectedSnapshots.length == 0) {
             alert('Select at least one snapshot to delete');
         } else {
@@ -209,10 +209,10 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
             if (confirm(confirmMsg + snapNames + ' deletes ' + totalSizeStr + ' of data. Are you sure?')) {
                 disableButton(button);
                 $.ajax({
-                    url: "/api/shares/" + share_name + "/snapshots?id=" + snapIds,
-                    type: "DELETE",
+                    url: '/api/shares/' + share_id + '/snapshots?id=' + snapIds,
+                    type: 'DELETE',
                     success: function() {
-                        enableButton(button)
+                        enableButton(button);
                         _this.$('[rel=tooltip]').tooltip('hide');
                         // reset selected snapshots
                         _this.selectedSnapshots = [];
@@ -229,7 +229,7 @@ SnapshotsTableModule = SnapshotsCommonView.extend({
                         }
                     },
                     error: function(xhr, status, error) {
-                        enableButton(button)
+                        enableButton(button);
                         _this.$('[rel=tooltip]').tooltip('hide');
                         _this.selectedSnapshots = [];
                         _this.collection.fetch();

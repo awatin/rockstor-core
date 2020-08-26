@@ -44,9 +44,9 @@ ServicesView = Backbone.View.extend({
         this.smTs = null; // current timestamp of sm service
         this.configurable_services = ['nis', 'ntpd', 'active-directory', 'ldap', 'snmpd', 'docker', 'smartd', 'smb', 'nut', 'replication', 'shellinaboxd', 'rockstor'];
         this.tooltipMap = {
-                'active-directory': 'By turning this service on, the system will attempt to join the Active Directory domain using the credentials provided during configuration.',
-                'rockstor-bootstrap': 'Service responsible for bootstrapping Rockstor when the system starts.',
-                'ztask-daemon': 'Background service for tasks like Pool scrub.'
+            'active-directory': 'By turning this service on, the system will attempt to join the Active Directory domain using the credentials provided during configuration.',
+            'rockstor-bootstrap': 'Service responsible for bootstrapping Rockstor when the system starts.',
+            'ztask-daemon': 'Background service for tasks like Pool scrub.'
         };
         this.initHandlebarHelpers();
     },
@@ -103,50 +103,58 @@ ServicesView = Backbone.View.extend({
         }));
 
         //Initialize bootstrap switch
-        this.$("[type='checkbox']").bootstrapSwitch();
-        this.$("[type='checkbox']").bootstrapSwitch('onColor', 'success'); //left side text color
-        this.$("[type='checkbox']").bootstrapSwitch('offColor', 'danger'); //right side text color
+        this.$('[type=\'checkbox\']').bootstrapSwitch();
+        this.$('[type=\'checkbox\']').bootstrapSwitch('onColor', 'success'); //left side text color
+        this.$('[type=\'checkbox\']').bootstrapSwitch('offColor', 'danger'); //right side text color
 
         //added ext func to sort over input checkbox - found on DataTables pages
         $.fn.dataTable.ext.order['dom-checkbox'] = function(settings, col) {
-                return this.api().column(col, {
-                    order: 'index'
-                }).nodes().map(function(td, i) {
-                    return $('input', td).prop('checked') ? '1' : '0';
-                });
-            }
-            //Added columns definition for sorting purpose
+            return this.api().column(col, {
+                order: 'index'
+            }).nodes().map(function(td, i) {
+                return $('input', td).prop('checked') ? '1' : '0';
+            });
+        };
+        //Added columns definition for sorting purpose
         $('table.data-table').DataTable({
-            "iDisplayLength": 15,
-            "aLengthMenu": [
+            'iDisplayLength': 15,
+            'aLengthMenu': [
                 [15, 30, 45, -1],
-                [15, 30, 45, "All"]
+                [15, 30, 45, 'All']
             ],
-            "columns": [
+            'columns': [
                 null, {
-                    "orderDataType": "dom-checkbox"
+                    'orderDataType': 'dom-checkbox'
                 }
             ]
         });
     },
 
     switchStatus: function(event, state) {
-
         var serviceName = $(event.target).attr('data-service-name');
-        if (state) {
-            this.startService(serviceName);
+        var serviceModel = this.collection.get(serviceName); // extract the service model from the collection to obtain config property
+
+        if (this.configurable_services.indexOf(serviceName) > -1 && !serviceModel.get('config') && state) {
+            app_router.navigate('services/' + serviceName + '/edit', {
+                trigger: true
+            });
         } else {
-            this.stopService(serviceName);
+            if (state) {
+                this.startService(serviceName);
+            } else {
+                this.stopService(serviceName);
+            }
         }
+
     },
 
     startService: function(serviceName) {
 
         var _this = this;
         $.ajax({
-            url: "/api/sm/services/" + serviceName + "/start",
-            type: "POST",
-            dataType: "json",
+            url: '/api/sm/services/' + serviceName + '/start',
+            type: 'POST',
+            dataType: 'json',
             success: function(data, status, xhr) {
                 _this.setStatusLoading(serviceName, false);
                 if (serviceName == 'active-directory') {
@@ -163,9 +171,9 @@ ServicesView = Backbone.View.extend({
 
         var _this = this;
         $.ajax({
-            url: "/api/sm/services/" + serviceName + "/stop",
-            type: "POST",
-            dataType: "json",
+            url: '/api/sm/services/' + serviceName + '/stop',
+            type: 'POST',
+            dataType: 'json',
             success: function(data, status, xhr) {
                 _this.setStatusLoading(serviceName, false);
                 if (serviceName == 'active-directory') {
@@ -231,7 +239,7 @@ ServicesView = Backbone.View.extend({
             }
             return opts.inverse(this);
         });
-        
+
         Handlebars.registerHelper('ifTooltipExist', function(serviceName, opts) {
             if (serviceName in _this.tooltipMap) {
                 return opts.fn(this);

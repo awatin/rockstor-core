@@ -66,7 +66,7 @@ AddPoolView = Backbone.View.extend({
         }, raid_err_msg);
 
         $.validator.addMethod('validateRaid', function (raid_level) {
-            var n = $("input:checked.disk").length;
+            var n = $('input:checked.disk').length;
             var min = 1;
             if (raid_level == 'single') {
                 err_msg = 'At least one disk is required.';
@@ -95,11 +95,14 @@ AddPoolView = Backbone.View.extend({
         $(this.el).empty();
         var _this = this;
         this.filteredCollection = _.reject(this.collection.models, function (disk) {
-            return _.isNull(disk.get('pool')) && !disk.get('parted') && !disk.get('offline') && _.isNull(disk.get('btrfs_uuid')) && isSerialUsable(disk.get('serial'));
+            return _.isNull(disk.get('pool')) &&
+                !disk.get('offline') && _.isNull(disk.get('btrfs_uuid')) &&
+                isSerialUsable(disk.get('serial')) &&
+                isRoleUsable(disk.get('role'));
         });
 
-        // N.B. the isSerialUsable() code below is now duplicated in the
-        // Backbone Disk model as the property isSerialUsable()
+        // N.B. isSerialUsable() and isRoleUsable() are duplicated in the
+        // Backbone Disk model as the property isSerialUsable() isRoleUsable()
         // storageadmin/static/storageadmin/js/models/models.js
         // It would be better not to have this duplication if possible.
         function isSerialUsable(diskSerialNumber) {
@@ -118,13 +121,57 @@ AddPoolView = Backbone.View.extend({
             return true;
         }
 
+        // Using the disk.role system we can filter drives on their usability.
+        // Roles for inclusion: openLUKS containers
+        // Roles to dismiss: LUKS containers, mdraid members, the 'root' role,
+        // and partitions (if not accompanied by a redirect role).
+        // Defaults to reject (return false)
+        function isRoleUsable(role) {
+            // check if our role is null = db default
+            // A drive with no role shouldn't present a problem for use.
+            if (role == null) {
+                return true;
+            }
+            // try json conversion and return false if it fails
+            // @todo not sure if this is redundant?
+            try {
+                var roleAsJson = JSON.parse(role);
+            } catch (e) {
+                // as we can't read this drives role we play save and exclude
+                // it's isRoleUsable status by false
+                return false;
+            }
+            // We have a json object, look for acceptable roles in the keys
+            //
+            // Accept use of 'openLUKS' device
+            if (roleAsJson.hasOwnProperty('openLUKS')) {
+                return true;
+            }
+            // Accept use of 'partitions' device but only if it is accompanied
+            // by a 'redirect' role, ie so there is info to 'redirect' to the
+            // by-id name held as the value to the 'redirect' role key.
+            if (roleAsJson.hasOwnProperty('partitions') && roleAsJson.hasOwnProperty('redirect')) {
+                // then we need to confirm if the fstype of the redirected
+                // partition is "" else we can't use it
+                if (roleAsJson.partitions.hasOwnProperty(roleAsJson.redirect)) {
+                    if (roleAsJson.partitions[roleAsJson.redirect] == '') {
+                        return true;
+                    }
+                }
+            }
+            // In all other cases return false, ie:
+            // reject roles of for example root, mdraid, LUKS,
+            // partitioned (when not accompanied by a valid redirect role) etc
+            return false;
+        }
+
         this.collection.remove(this.filteredCollection);
         $(_this.el).append(_this.template({
             disks: this.collection.toJSON(),
         }));
         this.renderSummary();
 
-        this.$("#disks-table").tablesorter({
+        this.$('#disks-table').tablesorter({
             headers: {
                 // assign the first column (we start counting zero)
                 0: {
@@ -144,21 +191,21 @@ AddPoolView = Backbone.View.extend({
         this.$('#raid_level').tooltip({
             html: true,
             placement: 'right',
-            title: "Desired RAID level of the pool<br><strong>Single</strong>: No software raid. (Recommended while using hardware raid).<br><strong>Raid0</strong>, <strong>Raid1</strong>, <strong>Raid10</strong>, <strong>Raid5</strong>, and <strong>Raid6</strong> are similar to conventional raid levels. See documentation for more information.<br><strong>WARNING: Raid5 and Raid6 are not production-ready</strong>"
+            title: 'Software RAID level<br><strong>Single</strong>: No RAID - one or more devices (-m dup enforced).<br><strong>Raid0</strong>, <strong>Raid1</strong>, <strong>Raid10</strong>, and the parity based <strong>Raid5</strong> & <strong>Raid6</strong> levels are all similar to conventional raid but chunk based, not device based. See docs for more info.<br><strong>WARNING: Raid5 and Raid6 are not production-ready</strong>'
         });
 
         this.$('#compression').tooltip({
             html: true,
             placement: 'right',
-            title: "Choose a compression algorithm for this Pool.<br><strong>zlib: </strong>slower but higher compression ratio.<br><strong>lzo: </strong>faster compression/decompression, but ratio smaller than zlib.<br>Enabling compression at the pool level applies to all Shares carved out of this Pool.<br>Don't enable compression here if you like to have finer control at the Share level.<br>You can change the algorithm, disable or enable it later, if necessary."
+            title: 'Choose a Pool compression algorithm.<br><strong>zlib: </strong>slower than lzo but higher compression ratio.<br><strong>lzo: </strong>faster than zlib but lower compression ratio.<br>Pool level compression applies to all it\'s Shares.<br>Alternatively: consider Share level compression.<br>This setting can be changed at any time.'
         });
 
         $('#add-pool-form').validate({
             onfocusout: false,
             onkeyup: false,
             rules: {
-                pool_name: "validatePoolName",
-                raid_level: "validateRaid"
+                pool_name: 'validatePoolName',
+                raid_level: 'validateRaid'
             },
             submitHandler: this.submit
         });
@@ -223,7 +270,7 @@ AddPoolView = Backbone.View.extend({
             $(this).closest('tr').toggleClass('row-highlight', this.checked);
         });
         var diskIds = checkboxes.filter(':checked').map(function() {
-                return this.id;
+            return this.id;
         }).get();
         var disks = _.map(diskIds, function(id) {
             return this.collection.get(id);
@@ -263,7 +310,7 @@ AddPoolView = Backbone.View.extend({
         .done(function() {
             enableButton(button);
             $('#add-pool-form input').tooltip('hide');
-            app_router.navigate('pools', {trigger: true})
+            app_router.navigate('pools', {trigger: true});
         })
         .fail(function() {
             enableButton(button);
@@ -282,6 +329,38 @@ AddPoolView = Backbone.View.extend({
     },
 
     initHandlebarHelpers: function () {
+
+        asJSON = function (role) {
+            // Simple wrapper to test for not null and JSON compatibility,
+            // returns the json object if both tests pass, else returns false.
+            if (role == null) { // db default
+                return false;
+            }
+            // try json conversion and return false if it fails
+            // @todo not sure if this is redundant?
+            try {
+                return JSON.parse(role);
+            } catch (e) {
+                return false;
+            }
+        };
+
+        // Identify Open LUKS container by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isRootDevice'
+        Handlebars.registerHelper('isOpenLuks', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('openLUKS')) {
+                // Once a LUKS container is open it has a type of crypt
+                // and we attribute it the role of 'openLUKS' as a result.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
         Handlebars.registerHelper('mathHelper', function (value, options) {
             return parseInt(value) + 1;
         });
@@ -294,3 +373,4 @@ AddPoolView = Backbone.View.extend({
 
 //Add pagination
 Cocktail.mixin(AddPoolView, PaginationMixin);
+

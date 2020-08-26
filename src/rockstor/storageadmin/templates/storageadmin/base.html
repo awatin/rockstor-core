@@ -1,10 +1,10 @@
 {% load staticfiles %}
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <!--
     /**
-    * Copyright (c) 2012-2013 RockStor, Inc. <http://rockstor.com>
+    * Copyright (c) 2012-2017 RockStor, Inc. <http://rockstor.com>
     * This file is part of RockStor.
     *
     * RockStor is free software; you can redistribute it and/or modify
@@ -31,10 +31,11 @@
     <link href="/static/js/lib/cron/jquery-cron.css" rel="stylesheet">
     <link href="/static/js/lib/gentleSelect/jquery-gentleSelect.css" rel="stylesheet">
     <link href="/static/storageadmin/css/style.css" rel="stylesheet">
-    <link href="/static/storageadmin/css/font-awesome-4.0.3/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/static/storageadmin/css/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <link href="/static/storageadmin/css/bootstrap-switch.min.css" rel="stylesheet">
     <link href="/static/storageadmin/css/dataTables.bootstrap.min.css" rel="stylesheet">
     <link href="/static/storageadmin/css/bootstrap-editable.css" rel="stylesheet"/>
+    <link href="/static/js/lib/select2/4.0.3/css/select2.min.css" rel="stylesheet" />
 
 
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
@@ -47,7 +48,7 @@
       * @licstart  The following is the entire license notice for the
       * JavaScript code in this page.
       *
-      * Copyright (c) 2012-2013 RockStor, Inc. <http://rockstor.com>
+      * Copyright (c) 2012-2017 RockStor, Inc. <http://rockstor.com>
       * This file is part of RockStor.
       *
       * RockStor is free software; you can redistribute it and/or modify
@@ -111,11 +112,29 @@
     <script src="/static/js/lib/handlebars-v4.0.5.js"></script>
     <script src="/static/js/lib/jquery.dataTables.min.js"></script>
     <script src="/static/js/lib/dataTables.bootstrap.min.js"></script>
+    <script src="/static/js/lib/DataTables-addons/file-size.js"></script>
     <script src="/static/js/lib/clipboard.min.js"></script>
     <script src="/static/js/lib/additional-methods.min.js"></script>
     <script src="/static/js/lib/bootstrap-editable.min.js"></script>
     <script src="/static/js/lib/Chart.min.js"></script>
+    <script src="/static/js/lib/jquery.i18n/CLDRPluralRuleParser.js"></script>
+    <script src="/static/js/lib/jquery.i18n/jquery.i18n.js"></script>
+    <script src="/static/js/lib/jquery.i18n/jquery.i18n.messagestore.js"></script>
+    <script src="/static/js/lib/jquery.i18n/jquery.i18n.fallbacks.js"></script>
+    <script src="/static/js/lib/jquery.i18n/jquery.i18n.parser.js"></script>
+    <script src="/static/js/lib/jquery.i18n/jquery.i18n.emitter.js"></script>
+    <script src="/static/js/lib/jquery.i18n/jquery.i18n.language.js"></script>
+    <script src="/static/js/lib/select2/4.0.3/js/select2.min.js"></script>
     <script src="/static/storageadmin/js/storageadmin.js"></script>
+    <script>
+        var langs_folder = '/static/js/lib/jquery.i18n/langs/';
+        $.i18n().load({
+            de: langs_folder + 'de.json',
+            es: langs_folder + 'es.json',
+            fr: langs_folder + 'fr.json',
+            it: langs_folder + 'it.json'
+        });
+    </script>
   </head>
 
   <body>
@@ -147,8 +166,13 @@
       <a id="appliance-name" href="#"></a>
       <div id="local-time"><i class="fa fa-clock-o fa-inverse"></i>&nbsp;Local Time:&nbsp;<span/></div>
       <a id="direct-shell" href="#shell"><i class="fa fa-desktop fa-inverse"></i>&nbsp;System Shell</a>
+      <div id="shutdown-status"></div>
+      <div id="pool-degraded-status"></div>
+      <div id="pool-dev-stats"></div>
       <div id="uptime"></div>
       <div id="appliance-loadavg"></div>
+      <div id="distro-info"></div>
+      <div id="yum-msg"><a id="yumupdates"></a></div>
   </div>
 
   <div id="wrapper1">
@@ -174,6 +198,23 @@
                     </div>
                 </div>
             </div>
+
+			<div id="yum_modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+			    <div class="modal-dialog">
+					<div class="modal-content">
+					    <div class="modal-header">
+                            <h3>Available updates</h3>
+						</div>
+						<div class="modal-body" id="yumContent" style="overflow: auto; height: 350px;">
+                            <div class="panel-group" id="yum_panels"></div>
+                        </div>
+						<div class="modal-footer">
+							<input type="button" data-dismiss="modal" class="btn btn-default" value="Close">
+                            <input type="button" id="yum-run" class="btn btn-primary" value="Update Packages">
+					    </div>
+				    </div>
+				</div>
+			</div>
 
               <div id="maincontent">
                   <!--Body content-->
@@ -210,43 +251,37 @@
   </div>
 
   <div class="modal fade" id="donate-modal">
-      <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h3 id="donate-modal-label">Thank you! for supporting Rockstor development</h3>
-      </div>
-      <div class="modal-body">
-        <div class="radio">
-          <label>
-        <input type="radio" name="contrib" id="contrib10" value="10" checked>$10
-          </label>
-        <div class="radio">
-          <label>
-        <input type="radio" name="contrib" class="contrib-other" id="contrib20" value="20">$20
-          </label>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal"
+                  aria-label="Close"><span aria-hidden="true">&times;</span>
+          </button>
+          <h2 id="donate-modal-label">Please consider donating to help support
+            Rockstor's development</h2>
         </div>
-        <div class="radio">
-          <label>
-        <input type="radio" name="contrib" class="contrib-other" id="contrib30" value="30">$30
-          </label>
-        </div>
-        <div class="radio">
-          <label>
-        <input type="radio" name="contrib" class="contrib-other" id="contrib50" value="50">$50 (Free Rockstor USB drive)
-          </label>
-        </div>
-        <div class="radio">
-          <label>
-        <input type="radio" name="contrib" id="contrib-custom" value="custom">Other
-          </label>
-        </div>
-        &nbsp;<input class="span2" id="custom-amount" name="custom-amount" placeholder="Enter amount" style="display: none">
-        <br><br>
-        <a id="donateYes" class="btn btn-primary" title="Donate">Donate</a>
-      </div>
-    </div><!-- /.modal-content -->
-      </div><!-- /.modal-dialog -->
+        <div class="modal-body">
+          <h5 id="donate-modal-subtitle">Our Open Source development is
+            dependant upon update channel subscriptions and donations.</h5>
+          <form id="inner-contrib-form"
+                action="https://www.paypal.com/cgi-bin/webscr" method="post"
+                target="_blank" style="text-align: center;">
+            <input type="hidden" name="cmd" value="_s-xclick"/>
+            <input type="hidden" name="hosted_button_id"
+                   value="P72VDTYULUZTC"/>
+            <input type="image"
+                   src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif"
+                   border="0" name="paypal_donate_button"
+                   id="paypal_donate_button"
+                   title="PayPal - The safer, easier way to pay online!"
+                   alt="Donate with PayPal button"/>
+            <!--      <img alt="" border="0" src="https://www.paypal.com/en_GB/i/scr/pixel.gif"-->
+            <!--           width="1" height="1"/>-->
+          </form>
+              <em>Upon clicking the above button, you will be redirected to our donation handler PayPal.</em>
+        </div><!-- /.model-body -->
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
   </div><!-- /.modal -->
 
 
@@ -254,15 +289,6 @@
       {% csrf_token %}
   </form>
 
-  <form id="contrib-form" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank"i style="display:none">
-      <input type="hidden" name="cmd" value="_xclick" />
-      <input type="hidden" name="business" value="WUDA5UNJXDCZ8" />
-      <input type="hidden" name="currency_code" value="USD" />
-      <input type="hidden" name="item_name" value="Support Rockstor development" />
-      <input type="hidden" name="amount" value="10" />
-      <input type="hidden" name="cn" value="Note to Rockstor developers" />
-      <input type="hidden" name="no_shipping" value="1" />
-  </form>
 
     <script src="/static/js/lib/bootstrap.js"></script>
     <script type="text/javascript">

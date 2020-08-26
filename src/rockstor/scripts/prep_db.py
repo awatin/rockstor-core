@@ -1,5 +1,5 @@
 """
-Copyright (c) 2012-2013 RockStor, Inc. <http://rockstor.com>
+Copyright (c) 2012-2020 RockStor, Inc. <http://rockstor.com>
 This file is part of RockStor.
 
 RockStor is free software; you can redistribute it and/or modify
@@ -22,34 +22,37 @@ from storageadmin.models import Setup
 
 def register_services():
     services = {
-        'AFP': 'netatalk',
-        'NFS': 'nfs',
-        'Samba': 'smb',
-        'NIS': 'nis',
-        'NTP': 'ntpd',
-        'Active Directory': 'active-directory',
-        'LDAP': 'ldap',
-        'SFTP': 'sftp',
-        'Replication': 'replication',
-        'SNMP': 'snmpd',
-        'Rock-on': 'docker',
-        'S.M.A.R.T': 'smartd',
-        'NUT-UPS': 'nut',
-        'ZTaskd': 'ztask-daemon',
-        'Bootstrap': 'rockstor-bootstrap',
-        'Shell In A Box': 'shellinaboxd',
-        'Rockstor': 'rockstor'
-        }
+        "NFS": "nfs",
+        "Samba": "smb",
+        "NIS": "nis",
+        "NTP": "ntpd",
+        "Active Directory": "active-directory",
+        "LDAP": "ldap",
+        "SFTP": "sftp",
+        "Replication": "replication",
+        "SNMP": "snmpd",
+        "Rock-on": "docker",
+        "S.M.A.R.T": "smartd",
+        "NUT-UPS": "nut",
+        "ZTaskd": "ztask-daemon",
+        "Bootstrap": "rockstor-bootstrap",
+        "Shell In A Box": "shellinaboxd",
+        "Rockstor": "rockstor",
+    }
 
+    # N.B. all other services have null as their default config with service.
+    # Consider bringing shellinaboxd in line with this now default behaviour.
     services_configs = {
-        'shellinaboxd': ('{"detach": false, "css": "white-on-black", '
-                         '"shelltype": "LOGIN"}')
-        }
+        "shellinaboxd": (
+            '{"detach": false, "css": "white-on-black", ' '"shelltype": "LOGIN"}'
+        )
+    }
 
     for k, v in services.items():
         try:
             so = Service.objects.get(name=v)
             so.display_name = k
+            # Apply any configuration defaults found in services_configs.
             if v in services_configs:
                 so.config = services_configs[v]
         except Service.DoesNotExist:
@@ -57,7 +60,7 @@ def register_services():
         finally:
             so.save()
     for so in Service.objects.filter():
-        if (so.display_name not in services):
+        if so.display_name not in services:
             so.delete()
 
 

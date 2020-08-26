@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # Django settings for Rockstor project.
 import os
+import subprocess, distro
 
 DEBUG = ${django-settings-conf:debug}
 TEMPLATE_DEBUG = DEBUG
@@ -69,15 +70,6 @@ USE_L10N = True
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
 
-# Absolute filesystem path to the directory that will hold user-uploaded files.
-# Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = ''
-
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash.
-# Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
-MEDIA_URL = ''
-
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
@@ -96,6 +88,9 @@ MEDIA_URL = '/media/'
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
 MEDIA_ROOT = os.path.join('${buildout:depdir}', 'static')
+
+# Absolute filesystem path where config backups are stored by default
+DEFAULT_CB_DIR = os.path.join(MEDIA_ROOT, 'config-backups')
 
 # Additional locations of static files
 #STATICFILES_DIRS = (
@@ -203,6 +198,7 @@ PIPELINE = {
 # the site admins on every HTTP 500 error when DEBUG=False.
 # See http://docs.djangoproject.com/en/dev/topics/logging for
 # more details on how to customize your logging configuration.
+LOG_LEVEL = 'DEBUG' if DEBUG else 'INFO'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -224,7 +220,7 @@ LOGGING = {
             'class': 'django.utils.log.AdminEmailHandler'
         },
         'file': {
-            'level': 'DEBUG',
+            'level': LOG_LEVEL,
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': '${django-settings-conf:logfile}',
             'maxBytes': 1000000,
@@ -240,29 +236,29 @@ LOGGING = {
         },
         'storageadmin': {
             'handlers': ['file'],
-            'level': 'DEBUG',
+            'level': LOG_LEVEL,
             'propagate': True,
         },
         'smart_manager': {
             'handlers': ['file'],
-            'level': 'DEBUG',
+            'level': LOG_LEVEL,
             'propagate': True,
         },
-	    'system': {
-		    'handlers': ['file'],
-		    'level': 'DEBUG',
+        'system': {
+            'handlers': ['file'],
+            'level': LOG_LEVEL,
             'propagate': True,
-	    },
-	    'scripts': {
-		    'handlers': ['file'],
-		    'level': 'DEBUG',
+        },
+        'scripts': {
+            'handlers': ['file'],
+            'level': LOG_LEVEL,
             'propagate': True,
-	    },
-	    'fs': {
-	        'handlers': ['file'],
-	        'level': 'DEBUG',
+        },
+        'fs': {
+            'handlers': ['file'],
+            'level': LOG_LEVEL,
             'propagate': True,
-	    },
+        },
     }
 }
 
@@ -280,6 +276,10 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 MNT_PT = '/mnt2/'
 NFS_EXPORT_ROOT = '/export/'
 SFTP_MNT_ROOT = '/mnt3/'
+
+# System volume label when no btrfs volume label is set as per default openSUSE
+# install: ie 'btrfs fi show' gives 'Label: none'
+SYS_VOL_LABEL = 'ROOT'
 
 TAP_DIR = '${django-settings-conf:taplib}'
 TAP_SERVER = ('127.0.0.1', ${django-settings-conf:tapport})
@@ -319,7 +319,7 @@ SCHEDULER = ('127.0.0.1', ${django-settings-conf:schedulerport})
 REPLICATION = {
 	    'ipc_socket': '/var/run/replication.sock',
 	    'max_send_attempts': 10,
-	    'max_snap_retain': 5,
+	    'max_snap_retain': 2,
 	    'listener_port': 10002,
 }
 
@@ -365,7 +365,9 @@ MODEL_DEFS = {
 	   'pqgroup': '-1/-1',
 }
 
+# Begin SFTP-related variables
 SSHD_HEADER = '###BEGIN: Rockstor SFTP CONFIG. DO NOT EDIT BELOW THIS LINE###'
+SFTP_STR = 'Subsystem\tsftp\tinternal-sftp'
 
 OAUTH_INTERNAL_APP = 'cliapp'
 
@@ -385,12 +387,20 @@ NUT_LISTEN_ON_IP = '0.0.0.0'
 NUT_SYSTEM_SHUTDOWNCMD = '/sbin/shutdown -h +0'
 
 # Shell In A Box base settings
-SHELLINABOX = {
-	'user': 'root',
-	'group': 'root',
-	'port': '4200',
-	'certs': '/var/lib/shellinabox'
-}
+if distro.id() == 'rockstor':
+    SHELLINABOX = {
+        'user': 'shellinabox',
+        'group': 'shellinabox',
+        'port': '4200',
+        'certs': '/var/lib/shellinabox'
+    }
+else:
+    SHELLINABOX = {
+        'user': 'shellinabox',
+        'group': 'shellinabox',
+        'port': '4200',
+        'certs': '/etc/shellinabox/certs'
+    }
 
 UPDATE_CHANNELS = {
 		'stable': {
@@ -418,3 +428,22 @@ TASK_SCHEDULER = {
 }
 
 OAUTH2_PROVIDER_APPLICATION_MODEL = 'oauth2_provider.Application'
+
+# Setup OS specific command paths via 'which cmd' calls
+# N.B. this method will not work with an alias, ie in CentOS
+# which ls
+# alias ls='ls --color=auto'
+#         /usr/bin/ls
+# The following have been tested in CentOS, openSUSE Leap15, and Tumbleweed
+UDEVADM = subprocess.check_output(["which", "udevadm"]).rstrip()
+SHUTDOWN = subprocess.check_output(["which", "shutdown"]).rstrip()
+CHKCONFIG_BIN = subprocess.check_output(["which", "chkconfig"]).rstrip()
+
+# Establish our OS base id, name, and version:
+# Use id for code path decisions. Others are for Web-UI display purposes.
+# Examples given are for CentOS Rockstor variant, Leap 15, and Tumblweed.
+OS_DISTRO_ID = distro.id()  # rockstor, opensuse-leap, opensuse-tumbleweed
+OS_DISTRO_NAME = distro.name()  # Rockstor, openSUSE Leap, openSUSE Tumbleweed
+# Note that the following will capture the build os version.
+# For live updates (running system) we call distro.version() directly in code.
+OS_DISTRO_VERSION = distro.version()  # 3, 15.0 ,20181107

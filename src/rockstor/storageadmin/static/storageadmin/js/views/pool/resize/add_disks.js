@@ -28,8 +28,8 @@
 PoolAddDisks = RockstorWizardPage.extend({
 
     events: {
-        "click #checkAll": "selectAllCheckboxes",
-        'click [class="diskname"]': 'clickCheckbox',
+        'click #checkAll': 'selectAllCheckboxes',
+        'click [class="diskid"]': 'clickCheckbox'
     },
 
     initialize: function () {
@@ -46,7 +46,7 @@ PoolAddDisks = RockstorWizardPage.extend({
         RockstorWizardPage.prototype.render.apply(this, arguments);
         $(this.el).html(this.template({
             model: this.model.toJSON(),
-            raidLevel: this.model.get('pool').get('raid'),
+            raidLevel: this.model.get('pool').get('raid')
         }));
         this.disks.fetch();
         return this;
@@ -54,7 +54,7 @@ PoolAddDisks = RockstorWizardPage.extend({
 
     renderDisks: function () {
         var disks = this.disks.filter(function (disk) {
-            return disk.available() && disk.isSerialUsable();
+            return disk.available() && disk.isSerialUsable() && disk.isRoleUsable();
         }, this);
         //convert the array elements which are backbone models/collections to JSON object
         for (var i = 0; i < disks.length; i++) {
@@ -74,15 +74,15 @@ PoolAddDisks = RockstorWizardPage.extend({
     },
 
     selectAllCheckboxes: function (event) {
-        $("#checkAll").change(function () {
-            $("input:checkbox").prop('checked', $(this).prop("checked"));
-            $("input:checkbox").closest("tr").toggleClass("row-highlight", this.checked);
+        $('#checkAll').change(function () {
+            $('input:checkbox').prop('checked', $(this).prop('checked'));
+            $('input:checkbox').closest('tr').toggleClass('row-highlight', this.checked);
         });
     },
 
     clickCheckbox: function (event) {
-        $("input:checkbox").change(function () {
-            $(this).closest("tr").toggleClass("row-highlight", this.checked);
+        $('input:checkbox').change(function () {
+            $(this).closest('tr').toggleClass('row-highlight', this.checked);
         });
     },
 
@@ -95,32 +95,64 @@ PoolAddDisks = RockstorWizardPage.extend({
             return $.Deferred().reject();
         }
         var _this = this;
-        var checked = this.$(".diskname:checked").length;
-        var diskNames = [];
-        this.$(".diskname:checked").each(function (i) {
-            diskNames.push($(this).val());
+        var checked = this.$('.diskid:checked').length;
+        var diskIds = [];
+        this.$('.diskid:checked').each(function (i) {
+            diskIds.push($(this).val());
         });
-        this.model.set('diskNames', diskNames);
+        this.model.set('diskIds', diskIds);
         if (this.model.get('raidChange')) {
             this.model.set('raidLevel', this.$('#raid-level').val());
-        } 
+        }
         return $.Deferred().resolve();
     },
 
     initHandlebarHelpers: function () {
+
+        asJSON = function (role) {
+            // Simple wrapper to test for not null and JSON compatibility,
+            // returns the json object if both tests pass, else returns false.
+            if (role == null) { // db default
+                return false;
+            }
+            // try json conversion and return false if it fails
+            // @todo not sure if this is redundant?
+            try {
+                return JSON.parse(role);
+            } catch (e) {
+                return false;
+            }
+        };
+
+        // Identify Open LUKS container by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isRootDevice'
+        Handlebars.registerHelper('isOpenLuks', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('openLUKS')) {
+                // Once a LUKS container is open it has a type of crypt
+                // and we attribute it the role of 'openLUKS' as a result.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
         Handlebars.registerHelper('display_raid_levels', function(){
             var html = '';
             var _this = this;
-            var levels = ['raid0', 'raid1', 'raid10', 'raid5', 'raid6']; 
-            _.each(levels, function(level) { 
+            var levels = ['single', 'raid0', 'raid1', 'raid10', 'raid5', 'raid6'];
+            _.each(levels, function(level) {
                 if (_this.raidLevel != level) {
                     html += '<option value="' + level + '">' + level + '</option>';
                 }
             });
             return new Handlebars.SafeString(html);
         });
-        
-        Handlebars.registerHelper("mathHelper", function (value, options) {
+
+        Handlebars.registerHelper('mathHelper', function (value, options) {
             return parseInt(value) + 1;
         });
 

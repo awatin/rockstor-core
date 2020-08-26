@@ -59,7 +59,7 @@
             <div class="form-group">
                 <label class="col-sm-4 control-label" for="mnt_options">Mount options</label>
                 <div class="col-sm-6">
-                    <input class="form-control" type="text" name="mnt_options" id="mnt_options" data-html="true" title="This is for <strong>Advanced users</strong> to provide specific BTRFS mount options.<br>Type them as a commma separated string of options without any spaces.<br> Allowed options are <strong>alloc_start, autodefrag, clear_cache, commit, compress-force, discard, fatal_errors, inode_cache, max_inline, metadata_ratio, noacl, noatime, nodatacow, nodatasum, nospace_cache, space_cache, ssd, nossd, ssd_spread, thread_pool</strong>">
+                    <input class="form-control" type="text" name="mnt_options" id="mnt_options" data-html="true" title="This is for <strong>Advanced users</strong> to provide specific BTRFS mount options.<br>Type them as a comma separated string of options without any spaces.<br> Allowed options are <strong>alloc_start, autodefrag, clear_cache, commit, compress-force, degraded, discard, fatal_errors, inode_cache, max_inline, metadata_ratio, noacl, noatime, nodatacow, nodatasum, nospace_cache, nossd, ro, rw, skip_balance, space_cache, ssd, ssd_spread, thread_pool</strong>">
                 </div>
             </div>
             <div class="form-group">
@@ -79,7 +79,16 @@
                                 {{#each disks}}
                                     <tr>
                                         <td>{{mathHelper @index}}</td>
-                                        <td>{{this.name}}</td>
+                                        <td>{{this.name}}
+                                            {{#if this.parted}}
+                                                <a href="#disks/role/{{this.id}}" class="user_role_part" data-disk-id="{{this.id}}" title="Partition (Redirect Role), click to edit. Capacity is for whole disk." rel="tooltip">
+                                                    <i class="glyphicon glyphicon-tags"></i></a>
+                                            {{/if}}
+                                            {{#if (isOpenLuks this.role)}}
+                                                <a href="#disks/luks/{{this.id}}" class="open_luks_drive" data-disk-id="{{this.id}}" title="Open LUKS Volume, click to review." rel="tooltip">
+                                                    <i class="glyphicon glyphicon-eye-open"></i></a>
+                                            {{/if}}
+                                        </td>
                                         <td>{{humanReadableSize this.size}}</td>
                                         <td>
                                             <input type="checkbox" class="disk" name="{{this.name}}" id="{{this.id}}" value="{{this.name}}" />

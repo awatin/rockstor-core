@@ -1,5 +1,5 @@
 """
-Copyright (c) 2012-2014 RockStor, Inc. <http://rockstor.com>
+Copyright (c) 2012-2020 RockStor, Inc. <http://rockstor.com>
 This file is part of RockStor.
 
 RockStor is free software; you can redistribute it and/or modify
@@ -22,7 +22,10 @@ from django.db import models
 class Group(models.Model):
     gid = models.IntegerField(unique=True)
     groupname = models.CharField(max_length=1024, null=True)
+    # 'admin' field represents indicator of Rockstor managed group;
+    # ie pre-existing group (eg audio) will be False. Rockstor created groups
+    # are admin=True.
     admin = models.BooleanField(default=False)
 
     class Meta:
-        app_label = 'storageadmin'
+        app_label = "storageadmin"

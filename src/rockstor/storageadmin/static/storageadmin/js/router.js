@@ -3,7 +3,7 @@
  * @licstart  The following is the entire license notice for the
  * JavaScript code in this page.
  *
- * Copyright (c) 2012-2016 RockStor, Inc. <http://rockstor.com>
+ * Copyright (c) 2012-2017 RockStor, Inc. <http://rockstor.com>
  * This file is part of RockStor.
  *
  * RockStor is free software; you can redistribute it and/or modify
@@ -35,22 +35,25 @@ var AppRouter = Backbone.Router.extend({
         'setup': 'doSetup',
         'home': 'showHome',
         'disks': 'showDisks',
-        'disks/blink/:diskName': 'blinkDrive',
-        'disks/smartcustom/:diskName': 'smartcustomDrive',
-        'disks/spindown/:diskName': 'spindownDrive',
-        'disks/:diskName': 'showDisk',
+        'disks/blink/:diskId': 'blinkDrive',
+        'disks/smartcustom/:diskId': 'smartcustomDrive',
+        'disks/spindown/:diskId': 'spindownDrive',
+        'disks/role/:diskId': 'roleDrive',
+        'disks/luks/:diskId': 'luksDrive',
+        'disks/:diskId': 'showDisk',
         'pools': 'showPools',
-        'pools/:poolName': 'showPool',
-        'pools/:poolName/?cView=:cView': 'showPool',
+        'pools/:pid': 'showPool',
+        'pools/:pid/?cView=:cView': 'showPool',
+        'pools/:pid/:scrubId': 'showScrub',
         'add_pool': 'addPool',
         'shares': 'showShares',
         'add_share?poolName=:poolName': 'addShare',
         'add_share': 'addShare',
-        'shares/:shareName': 'showShare',
-        'shares/:shareName/create-clone': 'createCloneFromShare',
-        'shares/:shareName/snapshots/:snapName/create-clone': 'createCloneFromSnapshot',
-        'shares/:shareName/rollback': 'rollbackShare',
-        'shares/:shareName/?cView=:cView': 'showShare',
+        'shares/:shareId': 'showShare',
+        'shares/:shareId/create-clone': 'createCloneFromShare',
+        'shares/:shareId/snapshots/:snapName/create-clone': 'createCloneFromSnapshot',
+        'shares/:shareId/rollback': 'rollbackShare',
+        'shares/:shareId/?cView=:cView': 'showShare',
         'snapshots': 'showSnapshots',
         'services': 'showServices',
         'services/:serviceName/edit': 'configureService',
@@ -93,9 +96,6 @@ var AppRouter = Backbone.Router.extend({
         'version': 'showVersion',
         'sftp': 'showSFTP',
         'add-sftp-share': 'addSFTPShare',
-        'afp': 'showAFP',
-        'add-afp-share': 'addAFPShare',
-        'afp/edit/:afpShareId': 'editAFPShare',
         'rockons': 'showRockons',
         'shell': 'showShell',
         'images': 'showImages',
@@ -109,18 +109,24 @@ var AppRouter = Backbone.Router.extend({
         '*path': 'showHome'
     },
 
-    before: function (route, param) {
+    before: function(route, param) {
         if (!logged_in) {
             if (route != 'login') {
-                app_router.navigate('login', {trigger: true});
+                app_router.navigate('login', {
+                    trigger: true
+                });
                 return false;
             }
         } else {
             if (route != 'setup' && !setup_done) {
-                app_router.navigate('setup', {trigger: true});
+                app_router.navigate('setup', {
+                    trigger: true
+                });
                 return false;
             } else if (route == 'setup' && setup_done) {
-                app_router.navigate('home', {trigger: true});
+                app_router.navigate('home', {
+                    trigger: true
+                });
                 return false;
             }
         }
@@ -166,36 +172,58 @@ var AppRouter = Backbone.Router.extend({
 
     },
 
-    blinkDrive: function(diskName) {
+    blinkDrive: function(diskId) {
         this.renderSidebar('storage', 'disks');
         this.cleanup();
-        this.currentLayout = new BlinkDiskView({diskName: diskName});
+        this.currentLayout = new BlinkDiskView({
+            diskId: diskId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    smartcustomDrive: function(diskName) {
+    smartcustomDrive: function(diskId) {
         this.renderSidebar('storage', 'disks');
         this.cleanup();
-        this.currentLayout = new SmartcustomDiskView({diskName: diskName});
+        this.currentLayout = new SmartcustomDiskView({
+            diskId: diskId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    spindownDrive: function(diskName) {
+    spindownDrive: function(diskId) {
         this.renderSidebar('storage', 'disks');
         this.cleanup();
-        this.currentLayout = new SpindownDiskView({diskName: diskName});
+        this.currentLayout = new SpindownDiskView({
+            diskId: diskId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    showDisk: function(diskName) {
+    roleDrive: function(diskId) {
+        this.renderSidebar('storage', 'disks');
+        this.cleanup();
+        this.currentLayout = new SetroleDiskView({diskId: diskId});
+        $('#maincontent').empty();
+        $('#maincontent').append(this.currentLayout.render().el);
+    },
+
+    luksDrive: function(diskId) {
+        this.renderSidebar('storage', 'disks');
+        this.cleanup();
+        this.currentLayout = new LuksDiskView({diskId: diskId});
+        $('#maincontent').empty();
+        $('#maincontent').append(this.currentLayout.render().el);
+    },
+
+    showDisk: function(diskId) {
         this.renderSidebar('storage', 'disks');
         $('#maincontent').empty();
         this.cleanup();
         this.currentLayout = new DiskDetailsLayoutView({
-            diskName: diskName
+            diskId: diskId
         });
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -216,13 +244,24 @@ var AppRouter = Backbone.Router.extend({
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    showPool: function(poolName, cView) {
+    showPool: function(pid, cView) {
         this.renderSidebar('storage', 'pools');
         $('#maincontent').empty();
         this.cleanup();
         this.currentLayout = new PoolDetailsLayoutView({
-            poolName: poolName,
-            cView: cView,
+            pid: pid,
+            cView: cView
+        });
+        $('#maincontent').append(this.currentLayout.render().el);
+    },
+
+    showScrub: function(pid, scrubId) {
+        this.renderSidebar('storage', 'pools');
+        $('#maincontent').empty();
+        this.cleanup();
+        this.currentLayout = new ScrubDetailsView({
+            pid: pid,
+            scrubId: scrubId
         });
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -239,13 +278,17 @@ var AppRouter = Backbone.Router.extend({
 
     showSnaps: function(shareName) {
         var snapshotsTableView = new SnapshotsTableView({
-            model: new Share({shareName: shareName})
+            model: new Share({
+                shareName: shareName
+            })
         });
     },
 
     showSnap: function(shareName, snapName) {
         var snapshotsTableView = new SnapshotsTableView({
-            model: new Share({shareName: shareName})
+            model: new Share({
+                shareName: shareName
+            })
         });
     },
 
@@ -253,22 +296,24 @@ var AppRouter = Backbone.Router.extend({
         this.renderSidebar('storage', 'shares');
         $('#maincontent').empty();
         this.cleanup();
-        if (_.isUndefined(poolName)){
+        if (_.isUndefined(poolName)) {
             this.currentLayout = new AddShareView();
         } else {
-            this.currentLayout = new AddShareView({ poolName: poolName });
+            this.currentLayout = new AddShareView({
+                poolName: poolName
+            });
         }
         $('#maincontent').append(this.currentLayout.render().el);
 
     },
 
-    showShare: function(shareName, cView) {
+    showShare: function(shareId, cView) {
         this.renderSidebar('storage', 'shares');
         $('#maincontent').empty();
         this.cleanup();
         this.currentLayout = new ShareDetailsLayoutView({
-            shareName: shareName,
-            cView: cView,
+            shareId: shareId,
+            cView: cView
         });
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -297,7 +342,12 @@ var AppRouter = Backbone.Router.extend({
         //to service config page, but we don't cleanup up to avoid closing socketio
         //Add: this let us have also a nice view of services real state updating while saving/changing configs
         //this.cleanup();
-        var service_options = _.isUndefined(adStatus) ? {serviceName: serviceName} : {serviceName: serviceName, adStatus: adStatus}
+        var service_options = _.isUndefined(adStatus) ? {
+            serviceName: serviceName
+        } : {
+            serviceName: serviceName,
+            adStatus: adStatus
+        };
         this.currentLayout = new ConfigureServiceView(service_options);
         $('#services_modal .modal-body').empty();
         $('#services_modal .modal-body').append(this.currentLayout.render().el);
@@ -323,7 +373,9 @@ var AppRouter = Backbone.Router.extend({
     editUser: function(username) {
         this.renderSidebar('system', 'users');
         this.cleanup();
-        this.currentLayout = new AddUserView({username: username});
+        this.currentLayout = new AddUserView({
+            username: username
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -347,7 +399,9 @@ var AppRouter = Backbone.Router.extend({
     editGroup: function() {
         this.renderSidebar('system', 'groups');
         this.cleanup();
-        this.currentLayout = new AddGroupView({groupname: groupname});
+        this.currentLayout = new AddGroupView({
+            groupname: groupname
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -396,7 +450,9 @@ var AppRouter = Backbone.Router.extend({
     editReplicationTask: function(replicaId) {
         this.renderSidebar('storage', 'replication');
         this.cleanup();
-        this.currentLayout = new AddReplicationTaskView({replicaId: replicaId});
+        this.currentLayout = new AddReplicationTaskView({
+            replicaId: replicaId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -474,7 +530,9 @@ var AppRouter = Backbone.Router.extend({
     editNetwork: function(connectionId) {
         this.renderSidebar('system', 'network');
         this.cleanup();
-        this.currentLayout = new NetworkConnectionView({connectionId: connectionId});
+        this.currentLayout = new NetworkConnectionView({
+            connectionId: connectionId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -487,34 +545,34 @@ var AppRouter = Backbone.Router.extend({
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    createCloneFromShare: function(shareName) {
+    createCloneFromShare: function(shareId) {
         this.renderSidebar('storage', 'shares');
         this.cleanup();
         this.currentLayout = new CreateCloneView({
             sourceType: 'share',
-            shareName: shareName
+            shareId: shareId
         });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    createCloneFromSnapshot: function(shareName, snapName) {
+    createCloneFromSnapshot: function(shareId, snapName) {
         this.renderSidebar('storage', 'shares');
         this.cleanup();
         this.currentLayout = new CreateCloneView({
             sourceType: 'snapshot',
-            shareName: shareName,
+            shareId: shareId,
             snapName: snapName
         });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
 
-    rollbackShare: function(shareName) {
+    rollbackShare: function(shareId) {
         this.renderSidebar('storage', 'shares');
         this.cleanup();
         this.currentLayout = new RollbackView({
-            shareName: shareName,
+            shareId: shareId
         });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
@@ -539,7 +597,9 @@ var AppRouter = Backbone.Router.extend({
     editScheduledTask: function(taskDefId) {
         this.renderSidebar('system', 'scheduled-tasks');
         this.cleanup();
-        this.currentLayout = new AddScheduledTaskView({taskDefId: taskDefId});
+        this.currentLayout = new AddScheduledTaskView({
+            taskDefId: taskDefId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -589,7 +649,9 @@ var AppRouter = Backbone.Router.extend({
     editSambaExport: function(sambaShareId) {
         this.renderSidebar('storage', 'samba');
         this.cleanup();
-        this.currentLayout = new AddSambaExportView({sambaShareId: sambaShareId});
+        this.currentLayout = new AddSambaExportView({
+            sambaShareId: sambaShareId
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -607,30 +669,6 @@ var AppRouter = Backbone.Router.extend({
         this.renderSidebar('storage', 'sftp');
         this.cleanup();
         this.currentLayout = new AddSFTPShareView();
-        $('#maincontent').empty();
-        $('#maincontent').append(this.currentLayout.render().el);
-    },
-
-    showAFP: function() {
-        this.renderSidebar('storage', 'afp');
-        this.cleanup();
-        this.currentLayout = new AFPView();
-        $('#maincontent').empty();
-        $('#maincontent').append(this.currentLayout.render().el);
-    },
-
-    addAFPShare: function() {
-        this.renderSidebar('storage', 'afp');
-        this.cleanup();
-        this.currentLayout = new AddAFPShareView();
-        $('#maincontent').empty();
-        $('#maincontent').append(this.currentLayout.render().el);
-    },
-
-    editAFPShare: function(afpShareId) {
-        this.renderSidebar('storage', 'afp');
-        this.cleanup();
-        this.currentLayout = new AddAFPShareView({afpShareId: afpShareId});
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -745,7 +783,9 @@ var AppRouter = Backbone.Router.extend({
     editEmail: function(emailID) {
         this.renderSidebar('system', 'email');
         this.cleanup();
-        this.currentLayout = new EmailView({emailID: emailID});
+        this.currentLayout = new EmailView({
+            emailID: emailID
+        });
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
@@ -757,28 +797,31 @@ var AppRouter = Backbone.Router.extend({
         $('#maincontent').empty();
         $('#maincontent').append(this.currentLayout.render().el);
     },
-    
+
     showShell: function() {
         //Special router function for shell
         //We fetch shellinaboxd service model and check for detach option
         //If not present or false we go with normal layout to maincontent
         //otherwhise (popup enabled) we open it in a new detached window
         var _this = this;
-        _this.shell_service = new Service({name: 'shellinaboxd'});
+        _this.shell_service = new Service({
+            name: 'shellinaboxd'
+        });
         _this.shell_service.fetch({
-        success: function(collection){
-            var config = JSON.parse(collection.get('config'));
-            if ('detach' in config && config.detach){
+            success: function(collection) {
+                var config = JSON.parse(collection.get('config'));
+                if ('detach' in config && config.detach) {
                     window.open('/shell', '', 'width=800, height=600');
-            } else {
-                _this.renderSidebar('system', 'shell');
-                _this.cleanup();
-                _this.currentLayout = new ShellView();
-                $('#maincontent').empty();
-                $('#maincontent').append(_this.currentLayout.render().el);                
+                } else {
+                    _this.renderSidebar('system', 'shell');
+                    _this.cleanup();
+                    _this.currentLayout = new ShellView();
+                    $('#maincontent').empty();
+                    $('#maincontent').append(_this.currentLayout.render().el);
+                }
             }
-        }});
-        
+        });
+
     },
 
 
@@ -786,7 +829,7 @@ var AppRouter = Backbone.Router.extend({
 
 Handlebars.registerHelper('sidenav', function(condition) {
     var html = '';
-    if(this.selected == condition){
+    if (this.selected == condition) {
         html += 'class="selected"';
     }
     return new Handlebars.SafeString(html);
@@ -800,16 +843,21 @@ $(document).ready(function() {
 
     $('table.data-table').DataTable({
         'iDisplayLength': 10,
-        'aLengthMenu': [[10, 15, 30, 45, -1], [10, 15, 30, 45, 'All']]
+        'aLengthMenu': [
+            [10, 15, 30, 45, -1],
+            [10, 15, 30, 45, 'All']
+        ]
     });
-    
+
     if (!RockStorGlobals.navbarLoaded) {
         refreshNavbar();
     }
     Backbone.history.start();
     $('#appliance-name').click(function(event) {
         event.preventDefault();
-        app_router.navigate('appliances', {trigger: true});
+        app_router.navigate('appliances', {
+            trigger: true
+        });
     });
 
     // Global ajax error handler
@@ -820,6 +868,7 @@ $(document).ready(function() {
         var detail = jqXhr.responseText;
         var errJson = {};
         var tb = [];
+        var userError = false;
         if (jqXhr.status != 403) {
             new Clipboard('#clip');
             // dont show forbidden errors (for setup screen)
@@ -829,7 +878,11 @@ $(document).ready(function() {
                 if (errJson.length > 1) {
                     tb = errJson.slice(1);
                 }
-            } else if (jqXhr.status >= 400 && jqXhr.status < 500) {
+                if(jqXhr.status == 400){
+                    tb = [];
+                    userError = true;
+                }
+            } else if (jqXhr.status > 400 && jqXhr.status < 500) {
                 detail = 'Unknown client error doing a ' + ajaxSettings.type + ' to ' + ajaxSettings.url;
             } else if (jqXhr.status >= 500 && jqXhr.status < 600) {
                 detail = 'Unknown internal error doing a ' + ajaxSettings.type + ' to ' + ajaxSettings.url;
@@ -841,13 +894,15 @@ $(document).ready(function() {
                     tb: tb,
                     stable: RockStorGlobals.updateChannel == 'Stable',
                     help: errJson.help,
-                    ajaxSettings: ajaxSettings
+                    ajaxSettings: ajaxSettings,
+                    userError: userError
                 }));
             } else {
                 $('.overlay-content', '#global-err-overlay').html(popuperrTemplate({
                     detail: detail,
                     tb: tb,
-                    stable: RockStorGlobals.updateChannel == 'Stable'
+                    stable: RockStorGlobals.updateChannel == 'Stable',
+                    userError: userError
                 }));
                 $('#global-err-overlay').overlay().load();
             }
@@ -880,17 +935,20 @@ $(document).ready(function() {
     //Function to handle services configuration modal closing on
     //Grant both on submit or cancel we move back to services page,
     //without trigger so we don't have a page refresh
-    $('#services_modal').on('hidden.bs.modal', function (e) {
+    $('#services_modal').on('hidden.bs.modal', function(e) {
         app_router.navigate('services');
     });
 
     // Initialize global error popup
-    $('#global-err-overlay').overlay({load: false});
+    $('#global-err-overlay').overlay({
+        load: false
+    });
 
     // handle btn navbar toggle ourselves since bootstrap collapse
     // seems to conflict with something
-    $('body').on('click.collapse.data-api', '[data-toggle=mycollapse]', function ( e ) {
-        var $this = $(this), target = $this.attr('data-target');
+    $('body').on('click.collapse.data-api', '[data-toggle=mycollapse]', function(e) {
+        var $this = $(this),
+            target = $this.attr('data-target');
         var h = $(target).css('height');
         if (!($(target).hasClass('in'))) {
             $(target).addClass('in');
@@ -901,7 +959,7 @@ $(document).ready(function() {
         }
     });
 
-    // donate button handler
+    // donate menu item handler
     $('#donate_nav').click(function(event) {
         if (event) {
             event.preventDefault();
@@ -909,23 +967,8 @@ $(document).ready(function() {
         $('#donate-modal').modal('show');
     });
 
-    $('#donate-modal #contrib-custom').click(function(e) {
-        $('#donate-modal #custom-amount').css('display', 'inline');
-    });
-    $('#donate-modal .contrib-other').click(function(e) {
-        $('#donate-modal #custom-amount').css('display', 'none');
-    });
-
-    $('#donate-modal #donateYes').click(function(event) {
-        contrib = $('#donate-modal input[type="radio"][name="contrib"]:checked').val();
-        if (contrib=='custom') {
-            contrib = $('#custom-amount').val();
-        }
-        if (_.isNull(contrib) || _.isEmpty(contrib) || isNaN(contrib)) {
-            contrib = 0; // set contrib to 0, let user input the number on paypal
-        }
-        $('#contrib-form input[name="amount"]').val(contrib);
-        $('#contrib-form').submit();
+    // donate modal paypal donate button handler
+    $('#donate-modal #paypal_donate_button').click(function(event) {
         $('#donate-modal').modal('hide');
     });
 
@@ -938,19 +981,73 @@ $(document).ready(function() {
     var kernelInfo = function(data) {
         $loadavg.text('Linux: ' + data);
     };
-    
+
+    var distroInfo = function(data) {
+        $('#distro-info').text("Uses " + data.distro);
+        $('#distro-info').attr('title', data.version);
+    };
+
     var displayLocaleTime = function(data) {
 
         $('#local-time > span').text(data);
 
-    }    
+    };
+
+    var displayShutdownStatus = function (data) {
+        var html = '';
+        if (data.status == 0) {
+            html += '<i class="fa fa-warning fa-inverse" style="color: red;"></i> Shutdown scheduled';
+            $('#shutdown-status').fadeOut(1500, function(){
+                $('#shutdown-status').attr('title', data.message);
+                $('#shutdown-status').html(html).fadeIn(1500);
+            });
+        } else {
+            $('#shutdown-status').fadeOut(1500, function() {
+                $('#shutdown-status').attr('title', '');
+                $('#shutdown-status').empty();
+            });
+        }
+    };
+
+    var displayPoolDegradedStatus = function (data) {
+        var html = '';
+        if (data.status === 'degraded') {
+            html += '<i class="fa fa-warning fa-inverse" style="color: red;"> Pool Degraded Alert </i>';
+            $('#pool-degraded-status').fadeOut(1500, function(){
+                $('#pool-degraded-status').attr('title', data.message);
+                $('#pool-degraded-status').html(html).fadeIn(1500);
+            });
+        } else {
+            $('#pool-degraded-status').fadeOut(1500, function() {
+                $('#pool-degraded-status').attr('title', '');
+                $('#pool-degraded-status').empty();
+            });
+        }
+    };
+
+    var displayPoolDevStats = function (data) {
+        var html = '';
+        if (data.status === 'errors') {
+            html += '<i class="fa fa-warning fa-inverse" style="color: red;"> Pool Device Errors Alert </i>';
+            $('#pool-dev-stats').fadeOut(1500, function(){
+                $('#pool-dev-stats').attr('title', data.message);
+                $('#pool-dev-stats').html(html).fadeIn(1500);
+            });
+        } else {
+            $('#pool-dev-stats').fadeOut(1500, function() {
+                $('#pool-dev-stats').attr('title', '');
+                $('#pool-dev-stats').empty();
+            });
+        }
+    };
+
 
     var displayLoadAvg = function(data) {
         var n = parseInt(data);
-        var mins = Math.floor(n/60) % 60;
-        var hrs = Math.floor(n / (60*60)) % 24;
-        var days = Math.floor(n / (60*60*24)) % 365;
-        var yrs = Math.floor(n / (60*60*24*365));
+        var mins = Math.floor(n / 60) % 60;
+        var hrs = Math.floor(n / (60 * 60)) % 24;
+        var days = Math.floor(n / (60 * 60 * 24)) % 365;
+        var yrs = Math.floor(n / (60 * 60 * 24 * 365));
         var str = 'Uptime: ';
         if (yrs == 1) {
             str += yrs + ' year, ';
@@ -983,6 +1080,65 @@ $(document).ready(function() {
         }
     };
 
+    var yum_updating = false; //global var to check if yum/zypper are updating
+    var displayYumUpdates = function(data) {
+        if (typeof data.yum_updating != 'undefined' && !data.yum_updating) {
+            console.log('closing');
+            yum_updating = false;
+            $('#yum-msg a').html('');
+        }
+        if (data.yum_updates && !yum_updating) {
+            $('#yum-msg').fadeIn(0);
+            $('#yum-msg a').html('<i class="fa fa-rss" title="Updates available"></i>');
+            if ($('#yum_panels').is(':empty')) {
+                _.each(data.packages, function(pkg) {
+                    var html = '';
+                    html += '<div class="panel panel-default">';
+                    html += '<div class="panel-heading panel-title">';
+                    html += '<a data-toggle="collapse" data-parent="#yum_panels" href="#' + pkg['name'] + '">';
+                    html += 'Package: <i>' + pkg['name'] + '</i></a></div>'; // closing panel-heading
+                    html += '<div id="' + pkg['name'] + '" class="panel-collapse collapse">'; // accordion bodies
+                    html += '<div class="panel-body">';
+                    html += '<p class="text-center">==================== Available Package ====================</p>'; // new package
+                    html += _.escape(pkg['available']).replace(/\[line\]/g, '<br/>') + '<br/><br/>';
+                    html += '<p class="text-center">==================== Installed Package ====================</p>'; // current package
+                    html += _.escape(pkg['installed']).replace(/\[line\]/g, '<br/>');
+                    html += '</div>'; // closing panel body
+                    html += '<div class="panel-footer text-justify">' + _.escape(pkg['description']) + '</div>';
+                    html += '</div></div>'; // closing accordion and panel
+                    $('#yum_panels').append(html);
+                });
+            }
+        } else {
+            $('#yum-msg').fadeOut(1000, function() {
+                $('#yum-msg a').html('');
+                $('#yum_panels').empty();
+            });
+        }
+    };
+
+    $('#yum-run').click(function(event) {
+        var run_update = confirm('Do you want to proceed with these updates?');
+        if (run_update) {
+            RockStorSocket.sysinfo.emit('runyum');
+            $('#yum_modal').modal('hide');
+            yum_updating = true;
+            $('#yum_panels').empty();
+            $('#yum-msg a').html('<i class="fa fa-rss" title="Updating all packages"></i>');
+        }
+    });
+
+    $('#yumupdates').click(function(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        if (!yum_updating) {
+            $('#yum_modal').modal({
+                backdrop: 'static',
+                keyboard: false
+            });
+        }
+    });
 
     var kernelError = function(data) {
         // If 'kernel' does not show up in the string, we're ok
@@ -994,10 +1150,15 @@ $(document).ready(function() {
 
 
     RockStorSocket.addListener(kernelInfo, this, 'sysinfo:kernel_info');
+    RockStorSocket.addListener(distroInfo, this, 'sysinfo:distro_info');
     RockStorSocket.addListener(displayLoadAvg, this, 'sysinfo:uptime');
     RockStorSocket.addListener(displayLocaleTime, this, 'sysinfo:localtime');
+    RockStorSocket.addListener(displayYumUpdates, this, 'sysinfo:yum_updates');
     RockStorSocket.addListener(kernelError, this, 'sysinfo:kernel_error');
     RockStorSocket.addListener(displayUpdate, this, 'sysinfo:software_update');
+    RockStorSocket.addListener(displayShutdownStatus, this, 'sysinfo:shutdown_status');
+    RockStorSocket.addListener(displayPoolDegradedStatus, this, 'sysinfo:pool_degraded_status');
+    RockStorSocket.addListener(displayPoolDevStats, this, 'sysinfo:pool_dev_stats');
 
     //insert pagination partial helper functions here
     Handlebars.registerHelper('pagination', function() {
@@ -1011,17 +1172,17 @@ $(document).ready(function() {
             backwardIcon = '<i class="glyphicon glyphicon-backward"></i>',
             fastBackwardIcon = '<i class="glyphicon glyphicon-fast-backward"></i>',
             forwardIcon = '<i class="glyphicon glyphicon-forward"></i>',
-            fastForwardIcon = '<i class="glyphicon glyphicon-fast-forward"></i>'
-        html = '',
-        entries = currPageNumber * maxEntriesPerPage,
-        entry_prefix = 0;
+            fastForwardIcon = '<i class="glyphicon glyphicon-fast-forward"></i>',
+            html = '',
+            entries = currPageNumber * maxEntriesPerPage,
+            entry_prefix = 0;
 
         if (totalPageCount > 1) {
             html += '<nav>';
-            if(currPageNumber * maxEntriesPerPage > totalEntryCount){
+            if (currPageNumber * maxEntriesPerPage > totalEntryCount) {
                 entries = totalEntryCount;
             }
-            entry_prefix = (currPageNumber - 1) * (maxEntriesPerPage) + 1 ;
+            entry_prefix = (currPageNumber - 1) * (maxEntriesPerPage) + 1;
 
             html += '<p><i>Displaying entries ' + entry_prefix + ' - ' + (entries) + ' of ' + totalEntryCount + '</i></p>';
             html += '<ul class="pagination">';
@@ -1032,15 +1193,15 @@ $(document).ready(function() {
                 html += '<li class="disabled"><a class="prev-page" href="#">' + backwardIcon + '</a></li>';
             }
 
-            var start = currPageNumber - 4 ;
-            if(start <= 0){
+            var start = currPageNumber - 4;
+            if (start <= 0) {
                 start = 1;
             }
             var end = start + 9;
-            if(end > totalPageCount){
+            if (end > totalPageCount) {
                 end = totalPageCount;
             }
-            for (var i=start; i<= end; i++) {
+            for (var i = start; i <= end; i++) {
                 if (i == currPageNumber) {
                     html += '<li class="active"><a class="go-to-page" href="#" data-page="' + i + '">' + i + '</a></li>';
                 } else {
@@ -1052,7 +1213,7 @@ $(document).ready(function() {
             } else {
                 html += '<li class="disabled"><a class="next-page" href="#">' + forwardIcon + '</a></li>';
             }
-            html += '<li><a class="go-to-page" href="#" data-page="' + totalPageCount + '">'+ fastForwardIcon +'</a></li>';
+            html += '<li><a class="go-to-page" href="#" data-page="' + totalPageCount + '">' + fastForwardIcon + '</a></li>';
             html += '</ul>';
             html += '</nav>';
         }

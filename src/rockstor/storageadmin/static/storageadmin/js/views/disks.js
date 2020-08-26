@@ -67,29 +67,39 @@ DisksView = RockstorLayoutView.extend({
         this.$('[rel=tooltip-top]').tooltip({
             placement: 'top',
             container: '#disks-table'
-        });        
+        });
         //initialize bootstrap switch
-        this.$("[type='checkbox']").bootstrapSwitch();
-        this.$("[type='checkbox']").bootstrapSwitch('onColor', 'success'); //left side text color
-        this.$("[type='checkbox']").bootstrapSwitch('offColor', 'danger'); //right side text color
-        
-        
+        this.$('[type=\'checkbox\']').bootstrapSwitch();
+        this.$('[type=\'checkbox\']').bootstrapSwitch('onColor', 'success'); //left side text color
+        this.$('[type=\'checkbox\']').bootstrapSwitch('offColor', 'danger'); //right side text color
+
+
       //added ext func to sort over SMART input checkboxes
         $.fn.dataTable.ext.order['dom-checkbox'] = function ( settings, col ) {
             return this.api().column( col, {order:'index'} ).nodes().map( function ( td, i ) {
                 return $('input', td).prop('checked') ? '1' : '0';
-                });
-        }
+            });
+        };
         //Added columns definition for sorting purpose
-        $('table.data-table').DataTable({
-            'iDisplayLength': 15,
-            'aLengthMenu': [[15, 30, 45, -1], [15, 30, 45, 'All']],
-            'columns': [
-            null,null,null,null,null,null,null,null,null,
-            { 'orderDataType': 'dom-checkbox' }
+        var customs = {
+            columnDefs: [
+                { type: 'file-size', targets: 2 }
+            ],
+            columns: [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                { 'orderDataType': 'dom-checkbox' }
             ]
-        });
-        
+        };
+
+        this.renderDataTables(customs);
     },
 
     setupDisks: function () {
@@ -110,10 +120,10 @@ DisksView = RockstorLayoutView.extend({
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
         disableButton(button);
-        var diskName = button.data('disk-name');
-        if (confirm('Are you sure you want to force the following device into Standby mode ' + diskName + '?')) {
+        var diskId = button.data('disk-id');
+        if (confirm('Are you sure you want to force the device into Standby mode ?')) {
             $.ajax({
-                url: '/api/disks/' + diskName + '/pause',
+                url: '/api/disks/' + diskId + '/pause',
                 type: 'POST',
                 success: function (data, status, xhr) {
                     _this.render();
@@ -131,10 +141,10 @@ DisksView = RockstorLayoutView.extend({
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
         disableButton(button);
-        var diskName = button.data('disk-name');
-        if (confirm('Are you sure you want to completely delete all data on the disk ' + diskName + '?')) {
+        var diskId = button.data('disk-id');
+        if (confirm('Are you sure you want to completely delete all data on the disk ?')) {
             $.ajax({
-                url: '/api/disks/' + diskName + '/wipe',
+                url: '/api/disks/' + diskId + '/wipe',
                 type: 'POST',
                 success: function (data, status, xhr) {
                     _this.render();
@@ -152,10 +162,10 @@ DisksView = RockstorLayoutView.extend({
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
         disableButton(button);
-        var diskName = button.data('disk-name');
-        if (confirm('Are you sure you want to erase BTRFS filesystem(s) on the disk ' + diskName + '?')) {
+        var diskId = button.data('disk-id');
+        if (confirm('Are you sure you want to erase BTRFS filesystem(s) on the disk ?')) {
             $.ajax({
-                url: '/api/disks/' + diskName + '/btrfs-wipe',
+                url: '/api/disks/' + diskId + '/btrfs-wipe',
                 type: 'POST',
                 success: function (data, status, xhr) {
                     _this.render();
@@ -173,10 +183,10 @@ DisksView = RockstorLayoutView.extend({
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
         disableButton(button);
-        var diskName = button.data('disk-name');
-        if (confirm('Are you sure you want to automatically import pools, shares and snapshots that may be on the disk ' + diskName + '?')) {
+        var diskId = button.data('disk-id');
+        if (confirm('Are you sure you want to automatically import pools, shares and snapshots that may be on the disk ?')) {
             $.ajax({
-                url: '/api/disks/' + diskName + '/btrfs-disk-import',
+                url: '/api/disks/' + diskId + '/btrfs-disk-import',
                 type: 'POST',
                 success: function (data, status, xhr) {
                     _this.render();
@@ -194,10 +204,10 @@ DisksView = RockstorLayoutView.extend({
         var button = $(event.currentTarget);
         if (buttonDisabled(button)) return false;
         disableButton(button);
-        var diskName = button.data('disk-name');
-        if (confirm('Are you sure you want to delete the disk ' + diskName + '?')) {
+        var diskId = button.data('disk-id');
+        if (confirm('Are you sure you want to delete the disk ?')) {
             $.ajax({
-                url: '/api/disks/' + diskName,
+                url: '/api/disks/' + diskId,
                 type: 'DELETE',
                 success: function (data, status, xhr) {
                     _this.render();
@@ -210,14 +220,27 @@ DisksView = RockstorLayoutView.extend({
     },
 
     cleanup: function () {
-        this.$("[rel='tooltip']").tooltip('hide');
+        this.$('[rel=\'tooltip\']').tooltip('hide');
     },
 
     initHandlebarHelpers: function () {
-        // Helper to display APM value after merger with upstream changes
-        // where the above helper is replaced by many smaller ones like this.
-        // N.B. untested. Presumably we do {{humanReadableAPM this.apm_level}}
-        // in upstream disks_table.jst
+
+        asJSON = function (role) {
+            // Simple wrapper to test for not null and JSON compatibility,
+            // returns the json object if both tests pass, else returns false.
+            if (role == null) { // db default
+                return false;
+            }
+            // try json conversion and return false if it fails
+            // @todo not sure if this is redundant?
+            try {
+                return JSON.parse(role);
+            } catch (e) {
+                return false;
+            }
+        };
+
+        // Helper to display APM value
         Handlebars.registerHelper('humanReadableAPM', function (apm) {
             var apmhtml = '';
             if (apm == 0 || apm == null) {
@@ -231,6 +254,7 @@ DisksView = RockstorLayoutView.extend({
             }
             return new Handlebars.SafeString(apmhtml);
         });
+
         // Simple helper to return true / false on powerState = null or unknown
         // Untested. Presumably we do:
         // {{#if (powerstateNullorUnknown this.power_state)}}
@@ -241,6 +265,7 @@ DisksView = RockstorLayoutView.extend({
             }
             return false;
         });
+
         // Simple helper to return true / false on powerState = active/idle
         // Untested. Presumably we do:
         // {{#if (powerStateActiveIdle this.power_state)}}
@@ -251,22 +276,14 @@ DisksView = RockstorLayoutView.extend({
             }
             return false;
         });
-        Handlebars.registerHelper('displayInfo', function (role) {
+
+        Handlebars.registerHelper('isMdraidMember', function (role) {
             // check for the legacy / pre json formatted role field contents.
             if (role == 'isw_raid_member' || role == 'linux_raid_member') {
                 return true;
             }
-            // now check if our role is null = db default
-            if (role == null) {
-                return false;
-            }
-            // try json conversion and return false if it fails
-            // @todo not sure if this is redundant?
-            try {
-                var roleAsJson = JSON.parse(role);
-            } catch (e) {
-                return false;
-            }
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
             // We have a json string ie non legacy role info so we can examine:
             if (roleAsJson.hasOwnProperty('mdraid')) {
                 // in the case of an mdraid property we are assured it is an
@@ -278,7 +295,157 @@ DisksView = RockstorLayoutView.extend({
             return false;
         });
 
-        Handlebars.registerHelper('displayBtrfs', function (btrfsUid, poolName) {
+        // Identify root device by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isMdraidMember'.
+        // true = device hosts the / partition
+        // false = root not found on this device
+        Handlebars.registerHelper('isRootDevice', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('root')) {
+                // Only the system device will have a 'root' role entry, we
+                // are not interested in the associated value, only the key.
+                // Non root members will have no 'root' property.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Identify LUKS container by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isRootDevice'
+        Handlebars.registerHelper('isLuksContainer', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('LUKS')) {
+                // Once a container is created it has an fstype of crypto_LUKS
+                // and we attribute it the role of 'LUKS' as a result.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Works by examining the Disk.role field and if a LUKS role is found
+        // we examine the roles value to see if it reports having an open
+        // counterpart ie is this container mapped to an OpenLuks volume
+        // which is expressed as unlocked having a true value.
+        Handlebars.registerHelper('isLuksContainerUnlocked', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('LUKS')) {
+                // here we deviate from isLuksContainer by unpacking
+                // our LUKS role's value:
+                if (roleAsJson['LUKS'].hasOwnProperty('unlocked') == true) {
+                    return roleAsJson['LUKS']['unlocked'];
+                }
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Identify Open LUKS container by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isRootDevice'
+        Handlebars.registerHelper('isOpenLuks', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('openLUKS')) {
+                // Once a LUKS container is open it has a type of crypt
+                // and we attribute it the role of 'openLUKS' as a result.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Identify bcache backing devices by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isRootDevice'
+        Handlebars.registerHelper('isBcache', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('bcache')) {
+                // We have a bcache backing device which must now be accessed
+                // indirectly via a virtual device, hence we tag it to avoid
+                // accidental re-use / delete.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Identify bcache caching devices by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isBcache'
+        Handlebars.registerHelper('isBcacheCdev', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('bcachecdev')) {
+                // We have a bcache caching device which we tag to avoid
+                // it's accidental re-use / delete.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Identify LVM2_member devices by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isBcache'
+        Handlebars.registerHelper('isLVM2member', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            if (roleAsJson.hasOwnProperty('LVM2member')) {
+                // We have an LVM2 member (Physical Volume) which we tag to
+                // avoid it's accidental re-use / delete.
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        // Identify User assigned role disks by return of true / false.
+        // Works by examining the Disk.role field. Based on sister handlebars
+        // helper 'isBcache'
+        // Initially only the redirect role was considered a User assigned
+        // role but this was expanded to include LUKS container and bcache
+        // backing and caching devices.
+        Handlebars.registerHelper('hasUserRole', function (role) {
+            var roleAsJson = asJSON(role);
+            if (roleAsJson == false) return false;
+            // We have a json string ie non legacy role info so we can examine:
+            // Test for each type of User role, essential a user requested
+            // purpose, ie use this partition, or make this a LUKS container.
+            // If found we can tag via this helper to avoid it's accidental
+            // re-use / deletion.
+            // Test for redirection (partition selection) role:
+            if (roleAsJson.hasOwnProperty('redirect')) {
+                return true;
+            }
+            // Test for LUKS container role:
+            if (roleAsJson.hasOwnProperty('LUKS')) {
+                return true;
+            }
+            // Test for bcache backing or caching roles:
+            if (roleAsJson.hasOwnProperty('bcache') ||
+                roleAsJson.hasOwnProperty('bcachecdev')) {
+                return true;
+            }
+            // In all other cases return false.
+            return false;
+        });
+
+        Handlebars.registerHelper('isNullPoolBtrfs', function (btrfsUid, poolName) {
             if (btrfsUid && _.isNull(poolName)) {
                 return true;
             }
@@ -304,18 +471,18 @@ DisksView = RockstorLayoutView.extend({
     },
 
     smartToggle: function (event, state) {
-        var disk_name = $(event.target).attr('data-disk-name');
+        var disk_id = $(event.target).attr('data-disk-id');
         if (state) {
-            this.smartOn(disk_name);
+            this.smartOn(disk_id);
         } else {
-            this.smartOff(disk_name);
+            this.smartOff(disk_id);
         }
     },
 
-    smartOff: function (disk_name) {
+    smartOff: function (disk_id) {
         var _this = this;
         $.ajax({
-            url: '/api/disks/' + disk_name + '/disable-smart',
+            url: '/api/disks/' + disk_id + '/disable-smart',
             type: 'POST',
             success: function (data, status, xhr) {
                 _this.render();
@@ -323,10 +490,10 @@ DisksView = RockstorLayoutView.extend({
         });
     },
 
-    smartOn: function (disk_name) {
+    smartOn: function (disk_id) {
         var _this = this;
         $.ajax({
-            url: '/api/disks/' + disk_name + '/enable-smart',
+            url: '/api/disks/' + disk_id + '/enable-smart',
             type: 'POST',
             success: function (data, status, xhr) {
                 _this.render();

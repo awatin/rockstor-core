@@ -19,10 +19,18 @@
     <td>{{@key}}</td>
     <td>{{this}}</td>
   </tr>
+  {{/each}}
   {{#each cc_map}}
   <tr>
     <td>Custom</td>
     <td>{{@key}}</td>
+    <td>{{this}}</td>
+  </tr>
+  {{/each}}
+  {{#each dev_map}}
+  <tr>
+    <td>Device</td>
+    <td>{{@dev}}</td>
     <td>{{this}}</td>
   </tr>
   {{/each}}
@@ -32,6 +40,5 @@
     <td>{{@key}}</td>
     <td>{{this}}</td>
   </tr>
-  {{/each}}
   {{/each}}
 </table>

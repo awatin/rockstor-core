@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Copyright (c) 2012-2016 RockStor, Inc. <http://rockstor.com>
+Copyright (c) 2012-2017 RockStor, Inc. <http://rockstor.com>
 This file is part of RockStor.
 
 RockStor is free software; you can redistribute it and/or modify
@@ -33,8 +33,10 @@ setup(
     entry_points={
         'console_scripts': [
             'backup-plugin = backup.scheduler:main',
+            'backup-config = scripts.config_backup:main',
             'bootstrap = scripts.bootstrap:main',
             'data-collector = smart_manager.data_collector:main',
+            'debug-mode = scripts.debugmode:main',
             'delete-api-key = scripts.delete_api_key:main',
             'delete-rockon = scripts.rockon_delete:delete_rockon',
             'docker-wrapper = scripts.docker_wrapper:main',
@@ -55,6 +57,7 @@ setup(
             'send-replica = scripts.scheduled_tasks.send_replica:main',
             'st-pool-scrub = scripts.scheduled_tasks.pool_scrub:main',
             'st-snapshot = scripts.scheduled_tasks.snapshot:main',
+            'st-system-power = scripts.scheduled_tasks.reboot_shutdown:main',
         ],
     },
 
@@ -68,17 +71,20 @@ setup(
         'django-pipeline == 1.6.9',
         'django-ztask == 0.1.5',
         'djangorestframework == 3.1.1',
+        'python-engineio == 2.3.2',  # Revisit version post 3.0.0
         'gevent == 1.1.2',
         'gevent-websocket == 0.9.5',
         'mock == 1.0.1',
         'psutil == 3.3.0',
         'psycogreen == 1.0',
-        'psycopg2 == 2.6',
+        'psycopg2 == 2.7.4',
         'python-socketio == 1.6.0',
         'pytz == 2014.3',
         'pyzmq == 15.0.0',
         'requests == 1.1.0',
-        'six == 1.10.0',
+        'six == 1.14.0',  # 1.14.0 (15 Jan 2020) Python 2/3 compat lib
+        'distro',
+        'django-braces == 1.13.0',  # 1.14.0 (30 Dec 2019) needs Django 1.11.0+
     ]
 
 )

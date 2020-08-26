@@ -27,10 +27,10 @@
 ConfigureServiceView = RockstorLayoutView.extend({
 
     events: {
-        "click #cancel": "cancel",
-        "click #security": "toggleFormFields",
-        "click #enabletls": "toggleCertUrl",
-        "click #mode": "toggleNutFields"
+        'click #cancel': 'cancel',
+        'click #security': 'toggleFormFields',
+        'click #enabletls': 'toggleCertUrl',
+        'click #mode': 'toggleNutFields'
     },
 
     initialize: function() {
@@ -90,7 +90,7 @@ ConfigureServiceView = RockstorLayoutView.extend({
                 shelltype: 'required',
                 css: 'required'
             },
-            "active-directory": {
+            'active-directory': {
                 domain: 'required',
                 username: 'required',
                 password: 'required'
@@ -102,7 +102,7 @@ ConfigureServiceView = RockstorLayoutView.extend({
             rockstor: {
                 listener_port: 'required'
             }
-        }
+        };
 
         this.formName = this.serviceName + '-form';
         this.service = new Service({
@@ -182,10 +182,10 @@ ConfigureServiceView = RockstorLayoutView.extend({
             template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div> \
                     <div class="tooltip-inner size300"></div></div>',
             title: 'These lines will be added to the [global] section of smb.conf<br/><br/> \
-                    - <strong>Inline comments with # or ; not allowed, Samba testparm <u>will fail</u></strong><br/><br/> \
+                    - <strong>Inline comments with # or ; are not allowed, Samba testparm <u>will fail</u></strong><br/><br/> \
                     - <strong>Samba params syntax</strong>:<br/>param = value (1 space both sides of equal sign)<br/><br/> \
                     - <strong>Samba params with equals inside value field (ex. socket options param)</strong>:<br/>socket options = SO_SNDBUF=131072<br/>(spaces on first equal, <u>no spaces</u> around others)<br/><br/> \
-                    Please check <a href="https://www.samba.org/samba/docs/man/manpages/smb.conf.5.html" target="_new">Samba official docs</a> for further infos'
+                    Please check <a href="https://www.samba.org/samba/docs/man/manpages/smb.conf.5.html" target="_new">Samba official docs</a> for further information'
         });
         this.$('#docker-form #root_share').tooltip({
             html: true,
@@ -225,12 +225,12 @@ To alert on temperature changes: <br> <strong>DEVICESCAN -W 4,35,40</strong> <br
             html: true,
             placement: 'right',
             container: 'body',
-            title: "<strong>Nut Mode</strong> — Select the overall mode of Network UPS Tools operation. The drop-down list offers the following options:<br> \
+            title: '<strong>Nut Mode</strong> — Select the overall mode of Network UPS Tools operation. The drop-down list offers the following options:<br> \
 <ul>\
-<li><strong>Standalone</strong> — The most common and recommended mode if you have a locally connected UPS and don't wish for Rockstor to act as a NUT server to any other LAN connected machines.</li> \
+<li><strong>Standalone</strong> — The most common and recommended mode if you have a locally connected UPS and don\'t wish for Rockstor to act as a NUT server to any other LAN connected machines.</li> \
 <li><strong>Net server</strong> — Is like Standalone only it also offers NUT services to other machines on the network who are running in Net client mode.</li> \
-<li><strong>Net client</strong> — Connect to an existing Nut server.</li> \
-</ul>"
+<li><strong>Net client</strong> — Connect to an existing NUT server.</li> \
+</ul>'
         });
         this.$('#nut-form #upsname').tooltip({
             html: true,
@@ -250,21 +250,21 @@ To alert on temperature changes: <br> <strong>DEVICESCAN -W 4,35,40</strong> <br
         this.$('#nut-form #password').tooltip({
             html: true,
             placement: 'right',
-            title: 'The password for the above nut user.'
+            title: 'The password for the above NUT user.'
         });
         this.$('#nut-form #upsmon').tooltip({
             html: true,
             placement: 'right',
-            title: "<strong>Monitor Mode</strong>:<br> \
+            title: '<strong>Monitor Mode</strong>:<br> \
 <ul>\
-<li><strong>Master</strong> - Default, this system will shutdown last, allowing slave nut systems time to shutdown first. UPS data port is most likely directly connected to this system.</li> \
-<li><strong>Slave</strong> - This system shuts down as soon as power is critical, it does not wait for any other nut systems. Mostly used when in netclient mode and no direct UPS data connection.</li> \
-</ul>"
+<li><strong>Master</strong> - Default, this system will shutdown last, allowing slave NUT systems time to shutdown first. UPS data port is most likely directly connected to this system.</li> \
+<li><strong>Slave</strong> - This system shuts down as soon as power is critical, it does not wait for any other NUT systems. Mostly used when in netclient mode and no direct UPS data connection.</li> \
+</ul>'
         });
         this.$('#nut-form #driver').tooltip({
             html: true,
             placement: 'right',
-            title: 'Driver for you UPS. Please see the NUT <a href="http://www.networkupstools.org/stable-hcl.html" target="_blank">Hardware Compatibility List for guidance.</a>'
+            title: 'Driver for your UPS. Please see the NUT <a href="http://www.networkupstools.org/stable-hcl.html" target="_blank">Hardware Compatibility List for guidance.</a>'
         });
         this.$('#nut-form #desc').tooltip({
             html: true,
@@ -344,16 +344,19 @@ To alert on temperature changes: <br> <strong>DEVICESCAN -W 4,35,40</strong> <br
                 }
 
                 var jqxhr = $.ajax({
-                    url: "/api/sm/services/" + _this.serviceName + "/config",
-                    type: "POST",
+                    url: '/api/sm/services/' + _this.serviceName + '/config',
+                    type: 'POST',
                     contentType: 'application/json',
-                    dataType: "json",
+                    dataType: 'json',
                     data: data
                 });
 
                 jqxhr.done(function() {
                     enableButton(button);
                     $('#services_modal').modal('hide');
+                    app_router.navigate('/services', {
+                        trigger: true
+                    });
                 });
 
                 jqxhr.fail(function(xhr, status, error) {
@@ -544,13 +547,13 @@ To alert on temperature changes: <br> <strong>DEVICESCAN -W 4,35,40</strong> <br
         // NUT-UPS helper to fill dropdown with shutdown timing values
         // eg by dynamically generating lines of the following form:
         // <option value="60">After 1 minute</option>
-        Handlebars.registerHelper('display_nutShutdownTimer_options', function () {
+        Handlebars.registerHelper('display_nutShutdownTimer_options', function() {
 
             var html = '',
                 _this = this;
-            if (_this.config.shutdowntimer == null){
+            if (_this.config.shutdowntimer == null) {
                 // if no previous setting then default to 0 = "when Battery Low"
-                _this.config.shutdowntimer = '0'
+                _this.config.shutdowntimer = '0';
             }
             for (var timeString in this.nutShutdownTimes) {
                 if (this.nutShutdownTimes[timeString] == _this.config.shutdowntimer) {

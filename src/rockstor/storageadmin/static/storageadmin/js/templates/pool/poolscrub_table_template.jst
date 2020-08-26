@@ -25,18 +25,18 @@
   <table id="poolscrubs-table" class="table table-bordered table-striped share-table data-table" width="100%" summary="List of poolscrubs">
     <thead>
       <tr>
-        <th scope="col" abbr="Id">Id</th>
+        <th scope="col" abbr="Id">ID</th>
         <th scope="col" abbr="Status">Status</th>
         <th scope="col" abbr="STime">Start Time</th>
         <th scope="col" abbr="ETime">End Time</th>
         <th scope="col" abbr="DScrubbed">Data Scrubbed</th>
+        <th scope="col" abbr="SRate">Scrub Rate</th>
       </tr>
     </thead>
     <tbody>
     {{display_poolScrub_table}}
     </tbody>
   </table>
-<div>{{pagination}}</div>
 {{else}}
   <div class="alert alert-warning"><h4>There are no scrubs to display</h4></div>
 {{/if}}
